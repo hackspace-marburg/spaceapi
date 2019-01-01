@@ -8,13 +8,18 @@ import json
 
 from dateutil.relativedelta import relativedelta, SA, SU
 
+
+# Connect the big red switch connected to BCM 3/pin 5/SCL
+DOOR_PIN = 3
+
+
 spaceapi = {
     'api': '0.13',
     'space': '[hsmr] Hackspace Marburg',
     'logo': 'https://hsmr.cc/logo.svg',
     'url': 'https://hsmr.cc/',
     'location': {
-        'address': '[hsmr] Hackspace Marburg, Rudolf-Bultmann-Straße 2b, 35039 Marburg, Germany',
+        'address': '[hsmr] Hackspace Marburg, Rudolf-Bultmann-Strasse 2b, 35039 Marburg, Germany',
         'lat': 50.81615,
         'lon': 8.77851
     },
@@ -33,32 +38,28 @@ spaceapi = {
         'open': None,
         'lastchange': int(time.time()),
         'message': None
-    },
-    'sensors': {
-        'door_locked': [
-            {
-                'value': False,
-                'location': 'upstairs'
-            }
-        ]
     }
 }
 
+
 def main():
     GPIO.setmode(GPIO.BCM)
-    GPIO.setup(4, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(3, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # big red FLTI* switch
-    #GPIO.setup(12, GPIO.OUT)
 
-    GPIO.add_event_detect(4, GPIO.BOTH, callback=button_handler, bouncetime=2000)
-    GPIO.add_event_detect(3, GPIO.BOTH, callback=button_handler, bouncetime=2000)  # fire when FLTI* switch changes position
+    GPIO.setup(DOOR_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.add_event_detect(
+            DOOR_PIN, GPIO.BOTH, callback=button_handler, bouncetime=2000)
 
     button_handler(0)
 
     while True:
         time.sleep(1)
 
+
 def get_flti_hours(timestamp):
+    '''get_flti_hours was used to calculate the date of the next FLTI-times.
+       However, currently these aren't provided and an extra switch is
+       also missing. This code is currently _not_ used and kind of legacy.
+    '''
     _, week_number, _ = timestamp.isocalendar()
     odd_week = bool(week_number % 2)
     flti_weekday = SA if odd_week else SU
@@ -74,10 +75,11 @@ def get_flti_hours(timestamp):
 
     return flti_weekday, flti_start, flti_end
 
+
 def button_handler(channel):
     time.sleep(2)  # dirty blerk, rising early
-    door_open = bool(GPIO.input(4))
-    flti_only = not bool(GPIO.input(3))  # big red FLTI* switch; internal pull-up
+    door_open = not bool(GPIO.input(DOOR_PIN))
+    flti_only = False  # there are currently no FLTI-times
 
     now = datetime.datetime.now()
     flti_weekday, flti_start, flti_end = get_flti_hours(now)
@@ -101,7 +103,6 @@ def button_handler(channel):
                 if flti_only and door_open
                 else None
             )
-            spaceapi['sensors']['door_locked'][0]['value'] = not door_open
             json.dump(spaceapi, f)
             f.close()
 
@@ -126,12 +127,14 @@ def button_handler(channel):
                     '* [[#door]][[Infrastruktur/Door | %25black%25Base: <br />{state}%25%25]]\n'
                     'time={lastchange}'.format(
                         state=('%25green%25besetzt' if door_open else '%25red%25unbesetzt'),
-                        flti_date=flti_start.strftime('%d.%m. %H:%M-') + flti_end.strftime('%H:%M'),
+                        # flti_date=flti_start.strftime('%d.%m. %H:%M-') + flti_end.strftime('%H:%M'),
+                        flti_date='F&auml;llt aus',
                         lastchange=spaceapi['state']['lastchange']
                     )
                 )
 
     return True
+
 
 @atexit.register
 def exit():
@@ -139,6 +142,7 @@ def exit():
         GPIO.cleanup()
     except:
         pass
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generates .json for Space API.')
