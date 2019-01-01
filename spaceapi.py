@@ -14,13 +14,13 @@ spaceapi = {
     'logo': 'https://hsmr.cc/logo.svg',
     'url': 'https://hsmr.cc/',
     'location': {
-        'address': '[hsmr] Hackspace Marburg, Am Plan 3, 35037 Marburg, Germany',
-        'lat': 50.8075289,
-        'lon': 8.7677467
+        'address': '[hsmr] Hackspace Marburg, Rudolf-Bultmann-Straße 2b, 35039 Marburg, Germany',
+        'lat': 50.81615,
+        'lon': 8.77851
     },
     'contact': {
         'email': 'mail@hsmr.cc',
-        'irc': 'ircs://irc.hackint.org:9999/#hsmr',
+        'irc': 'ircs://irc.hackint.org:6697/#hsmr',
         'ml': 'public@lists.hsmr.cc',
         'phone': '+49 6421 4924981'
     },
