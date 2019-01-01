@@ -46,12 +46,14 @@ spaceapi = {
 
 def main():
     GPIO.setmode(GPIO.BCM)
-    GPIO.setup(24, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(4, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # big red FLTI* switch
-    GPIO.setup(12, GPIO.OUT)
+    GPIO.setup(4, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(3, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # big red FLTI* switch
+    #GPIO.setup(12, GPIO.OUT)
 
-    GPIO.add_event_detect(24, GPIO.BOTH, callback=button_handler, bouncetime=2000)
-    GPIO.add_event_detect(4, GPIO.BOTH, callback=button_handler, bouncetime=2000)  # fire when FLTI* switch changes position
+    GPIO.add_event_detect(4, GPIO.BOTH, callback=button_handler, bouncetime=2000)
+    GPIO.add_event_detect(3, GPIO.BOTH, callback=button_handler, bouncetime=2000)  # fire when FLTI* switch changes position
+
+    button_handler(0)
 
     while True:
         time.sleep(1)
@@ -74,8 +76,8 @@ def get_flti_hours(timestamp):
 
 def button_handler(channel):
     time.sleep(2)  # dirty blerk, rising early
-    door_open = bool(GPIO.input(24))
-    flti_only = not bool(GPIO.input(4))  # big red FLTI* switch; internal pull-up
+    door_open = bool(GPIO.input(4))
+    flti_only = not bool(GPIO.input(3))  # big red FLTI* switch; internal pull-up
 
     now = datetime.datetime.now()
     flti_weekday, flti_start, flti_end = get_flti_hours(now)
