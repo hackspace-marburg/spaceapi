@@ -35,7 +35,8 @@ spaceapi = {
 	'open': False,
 	'state': {
 		'open': None,
-		'lastchange': int(time.time())
+		'lastchange': int(time.time()),
+		'message': None
 	},
 	'sensors': {
 		'door_locked': [
@@ -56,9 +57,11 @@ def main(json_location='spaceapi.json', wiki_location='Site.SiteNav', reconnect=
 
 	GPIO.setmode(GPIO.BCM)
 	GPIO.setup(24, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+	GPIO.setup(4, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # big red FLTI* switch
 	GPIO.setup(12, GPIO.OUT)
 
 	GPIO.add_event_detect(24, GPIO.BOTH, callback=button_handler, bouncetime=2000)
+	GPIO.add_event_detect(4, GPIO.BOTH, callback=button_handler, bouncetime=2000)  # fire when FLTI* switch changes position
 
 	irc_connected = False
 	while not irc_connected:
@@ -112,29 +115,48 @@ def timedelta():
 
 def button_handler(channel):
 	time.sleep(2) # dirty blerk, rising early
-	door_open = bool(GPIO.input(channel))
-	if door_open != spaceapi['open']:
-		print(channel, door_open)
-
+	door_open = bool(GPIO.input(24))
+	flti_only = not bool(GPIO.input(4))  # big red FLTI* switch; internal pull-up
+	if (
+		(door_open != spaceapi['state']['open'])
+		or (flti_only and spaceapi['state']['message'] == None)
+		or (not flti_only and spaceapi['state']['message'] != None)
+	):
 		with open(json_location, 'w') as f:
 			spaceapi['open'] = door_open
 			spaceapi['state']['open'] = door_open
 			spaceapi['state']['lastchange'] = int(time.time())
+			spaceapi['state']['message'] = (
+				'Access is currently restricted to WLTI*. Please refer to https://hsmr.cc/flti for more details.'
+				if flti_only and door_open
+				else None
+			)
 			spaceapi['sensors']['door_locked'][0]['value'] = not door_open
 			json.dump(spaceapi, f)
 			f.close()
 
 		with open(wiki_location, 'w') as f:
-			f.write(
-				'version=pmwiki-2.2.53 ordered=1 urlencoded=1\n'
-				'name=Site.SiteNav\n'
-				'targets=Infrastruktur.ServerB2s\n'
-				'text=* [[#door]][[Infrastruktur/Door | %25black%25Base: <br />{state}%25%25]]\n'
-				'time={lastchange}'.format(
-					state='%25green%25besetzt' if door_open else '%25red%25unbesetzt',
-					lastchange=spaceapi['state']['lastchange']
+			if flti_only and door_open:
+				f.write(
+					'version=pmwiki-2.2.53 ordered=1 urlencoded=1\n'
+					'name=Site.SiteNav\n'
+					'targets=Infrastruktur.ServerB2s\n'
+					'text=* [[#door]][[Main/FLTI | %25black%25Base: <br />%25purple%25FLTI*-Zeit%25%25]]\n'
+					'time={lastchange}'.format(
+						lastchange=spaceapi['state']['lastchange']
+					)
 				)
-			)
+			else:
+				f.write(
+					'version=pmwiki-2.2.53 ordered=1 urlencoded=1\n'
+					'name=Site.SiteNav\n'
+					'targets=Infrastruktur.ServerB2s\n'
+					'text=* [[#door]][[Infrastruktur/Door | %25black%25Base: <br />{state}%25%25]]\n'
+					'time={lastchange}'.format(
+						state=('%25green%25besetzt' if door_open else '%25red%25unbesetzt'),
+						lastchange=spaceapi['state']['lastchange']
+					)
+				)
 
 	return True
 
@@ -156,10 +178,11 @@ def irc_in(fd, condition, irc, irc_socket):
 	elif data.find('MODE hsmr_doorbot') != -1 or data.find('This nickname is registered. Please') != -1:
 		irc.write(b'PRIVMSG NickServ :identify PASSWORD\r\n')
 	elif data.find('PRIVMSG #hsmr :!base') != -1:
-		irc.write(b'NOTICE #hsmr :The door {location} has been {state} for {timedelta}.\r\n'.format(
+		irc.write(b'NOTICE #hsmr :The door {location} has been {state} for {timedelta}.{message}\r\n'.format(
 			location=spaceapi['sensors']['door_locked'][0]['location'],
 			state='open' if spaceapi['state']['open'] else 'closed',
-			timedelta=' and '.join(timedelta())
+			timedelta=' and '.join(timedelta()),
+			message='' if spaceapi['state']['message'] else ' ' + spaceapi['state']['open']
 		))
 
 	return True
