@@ -9,8 +9,8 @@ import json
 from dateutil.relativedelta import relativedelta, SA, SU
 
 
-# Connect the big red switch connected to BCM 3/pin 5/SCL
-DOOR_PIN = 3
+# Connect the big red switch to BCM 17/pin 11
+DOOR_PIN = 17
 
 
 spaceapi = {
