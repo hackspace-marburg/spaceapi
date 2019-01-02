@@ -1,0 +1,13 @@
+[Unit]
+Description=updates /spaceapi.json and provides an irc bot to check the door's state
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/conf.d/spaceapi
+ExecStart=/usr/bin/spaceapi.py --file ${file} --wiki ${wiki}
+RestartSec=5
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
