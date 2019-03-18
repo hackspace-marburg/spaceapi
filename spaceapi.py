@@ -108,6 +108,7 @@ def button_handler(channel):
 
         with open(wiki_location, 'w') as f:
             if flti_only and door_open:
+                # Currently there are no FLTI-times, this branch contains dead code.
                 f.write(
                     'version=pmwiki-2.2.53 ordered=1 urlencoded=1\n'
                     'name=Site.SiteNav\n'
@@ -123,12 +124,11 @@ def button_handler(channel):
                     'version=pmwiki-2.2.53 ordered=1 urlencoded=1\n'
                     'name=Site.SiteNav\n'
                     'targets=Infrastruktur.ServerB2s\n'
-                    'text=* [[Main.FLTI | %25purple%25FLTI*-Zeit: %3cbr />%25black%25{flti_date}%25%25]]%0a'
-                    '* [[#door]][[Infrastruktur/Door | %25black%25Base: <br />{state}%25%25]]\n'
+                    'text=* [[#door]][[Infrastruktur/Door | %25black%25Base: <br />{state}%25%25]]\n'
                     'time={lastchange}'.format(
                         state=('%25green%25besetzt' if door_open else '%25red%25unbesetzt'),
                         # flti_date=flti_start.strftime('%d.%m. %H:%M-') + flti_end.strftime('%H:%M'),
-                        flti_date='F&auml;llt aus',
+                        # flti_date='F&auml;llt aus',
                         lastchange=spaceapi['state']['lastchange']
                     )
                 )
