@@ -1,17 +1,17 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 import RPi.GPIO as GPIO
 import argparse
 import atexit
 import time
 import datetime
 import json
+import paho.mqtt.client as mqtt
 
 from dateutil.relativedelta import relativedelta, SA, SU
 
-
 # Connect the big red switch to BCM 17/pin 11
 DOOR_PIN = 17
-
+mqttclient = mqtt.Client() 
 
 spaceapi = {
     'api': '0.13',
@@ -30,14 +30,13 @@ spaceapi = {
         'phone': '+49 6421 4924981'
     },
     'issue_report_channels': [
-        'email',
-        'irc'
+        'email'
     ],
     'open': False,
     'state': {
         'open': None,
         'lastchange': int(time.time()),
-        'message': None
+        'message': ''
     }
 }
 
@@ -48,12 +47,33 @@ def main():
     GPIO.setup(DOOR_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.add_event_detect(
             DOOR_PIN, GPIO.BOTH, callback=button_handler, bouncetime=2000)
+    
+    mqttclient.on_connect = on_connect
+    mqttclient.on_message = on_message
+    mqttclient.on_disconnect = on_disconnect
+    mqttclient.connect("b2s.hsmr.cc", 1883, 60)
 
     button_handler(0)
 
-    while True:
-        time.sleep(1)
+    mqttclient.loop_forever()
+    
+    #while True:
+    #    time.sleep(1)
 
+def on_connect(client, userdata, flags, rc):
+    print("Connected with result code: "+str(rc))
+    client.subscribe('door')
+
+def on_disconnect(client, userdata, rc):
+    print('Disconnected. Reason: ' + str(rc))
+
+def on_message(client, userdata, msg):
+    try:
+        state = json.loads(msg.payload.decode('utf-8'))
+        change_state(state['door_open'], state['flti_only'], state['timestamp'])
+    except Exception as e:
+        print(e)
+        print('Invalid Message: ' + str(msg.payload))
 
 def get_flti_hours(timestamp):
     '''get_flti_hours was used to calculate the date of the next FLTI-times.
@@ -80,8 +100,23 @@ def button_handler(channel):
     time.sleep(2)  # dirty blerk, rising early
     door_open = not bool(GPIO.input(DOOR_PIN))
     flti_only = False  # there are currently no FLTI-times
+    print('Door state changed (physically)') 
+    mqttclient.publish('door',
+            payload=json.dumps(
+                dict(
+                    door_open=door_open,
+                    flti_only=flti_only,
+                    timestamp=int(time.time()),
+                    )
+                ),
+            qos=2,
+            retain=True
+            )
+    #change_state(door_open, flti_only)
 
-    now = datetime.datetime.now()
+def change_state(door_open, flti_only, timestamp):
+    print('Door state changed (Message): ' + str(door_open))
+    now = datetime.datetime.fromtimestamp(timestamp)
     flti_weekday, flti_start, flti_end = get_flti_hours(now)
 
     if now >= flti_end:
@@ -97,7 +132,7 @@ def button_handler(channel):
         with open(json_location, 'w') as f:
             spaceapi['open'] = door_open
             spaceapi['state']['open'] = door_open
-            spaceapi['state']['lastchange'] = int(time.time())
+            spaceapi['state']['lastchange'] = int(timestamp)
             spaceapi['state']['message'] = (
                 'Access is currently restricted to WLTI*. Please refer to https://hsmr.cc/flti for more details.'
                 if flti_only and door_open
@@ -108,7 +143,6 @@ def button_handler(channel):
 
         with open(wiki_location, 'w') as f:
             if flti_only and door_open:
-                # Currently there are no FLTI-times, this branch contains dead code.
                 f.write(
                     'version=pmwiki-2.2.53 ordered=1 urlencoded=1\n'
                     'name=Site.SiteNav\n'
@@ -124,15 +158,15 @@ def button_handler(channel):
                     'version=pmwiki-2.2.53 ordered=1 urlencoded=1\n'
                     'name=Site.SiteNav\n'
                     'targets=Infrastruktur.ServerB2s\n'
-                    'text=* [[#door]][[Infrastruktur/Door | %25black%25Base: <br />{state}%25%25]]\n'
+                    'text=* [[Main.FLTI | %25purple%25FLTI*-Zeit: %3cbr />%25black%25{flti_date}%25%25]]%0a'
+                    '* [[#door]][[Infrastruktur/Door | %25black%25Base: <br />{state}%25%25]]\n'
                     'time={lastchange}'.format(
                         state=('%25green%25besetzt' if door_open else '%25red%25unbesetzt'),
                         # flti_date=flti_start.strftime('%d.%m. %H:%M-') + flti_end.strftime('%H:%M'),
-                        # flti_date='F&auml;llt aus',
+                        flti_date='F&auml;llt aus',
                         lastchange=spaceapi['state']['lastchange']
                     )
                 )
-
     return True
 
 
