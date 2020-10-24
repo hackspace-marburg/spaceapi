@@ -30,13 +30,14 @@ spaceapi = {
         'phone': '+49 6421 4924981'
     },
     'issue_report_channels': [
-        'email'
+        'email',
+        'irc'
     ],
     'open': False,
     'state': {
         'open': None,
         'lastchange': int(time.time()),
-        'message': ''
+        'message': None
     }
 }
 
@@ -109,7 +110,7 @@ def button_handler(channel):
                     timestamp=int(time.time()),
                     )
                 ),
-            qos=2,
+            qos=1,
             retain=True
             )
     #change_state(door_open, flti_only)
@@ -143,6 +144,7 @@ def change_state(door_open, flti_only, timestamp):
 
         with open(wiki_location, 'w') as f:
             if flti_only and door_open:
+                # Currently there are no FLTI-times, this branch contains dead code.
                 f.write(
                     'version=pmwiki-2.2.53 ordered=1 urlencoded=1\n'
                     'name=Site.SiteNav\n'
@@ -158,12 +160,11 @@ def change_state(door_open, flti_only, timestamp):
                     'version=pmwiki-2.2.53 ordered=1 urlencoded=1\n'
                     'name=Site.SiteNav\n'
                     'targets=Infrastruktur.ServerB2s\n'
-                    'text=* [[Main.FLTI | %25purple%25FLTI*-Zeit: %3cbr />%25black%25{flti_date}%25%25]]%0a'
-                    '* [[#door]][[Infrastruktur/Door | %25black%25Base: <br />{state}%25%25]]\n'
+                    'text=* [[#door]][[Infrastruktur/Door | %25black%25Base: <br />{state}%25%25]]\n'
                     'time={lastchange}\n'.format(
                         state=('%25green%25besetzt' if door_open else '%25red%25unbesetzt'),
                         # flti_date=flti_start.strftime('%d.%m. %H:%M-') + flti_end.strftime('%H:%M'),
-                        flti_date='F&auml;llt aus',
+                        # flti_date='F&auml;llt aus',
                         lastchange=spaceapi['state']['lastchange']
                     )
                 )
