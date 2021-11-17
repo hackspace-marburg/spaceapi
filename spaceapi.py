@@ -9,7 +9,7 @@ import paho.mqtt.client as mqtt
 
 from dateutil.relativedelta import relativedelta, SA, SU
 
-# Connect the big red switch to BCM 17/pin 11
+# Connect the switch to BCM 17/pin 11
 DOOR_PIN = 17
 mqttclient = mqtt.Client() 
 
@@ -99,7 +99,7 @@ def get_flti_hours(timestamp):
 
 def button_handler(channel):
     time.sleep(2)  # dirty blerk, rising early
-    door_open = not bool(GPIO.input(DOOR_PIN))
+    door_open = bool(GPIO.input(DOOR_PIN))
     flti_only = False  # there are currently no FLTI-times
     print('Door state changed (physically)') 
     mqttclient.publish('door',

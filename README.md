@@ -1,6 +1,6 @@
 # spaceapi.py
 
-Modify our hackspace's [door](https://hsmr.cc/Infrastruktur/Door) state with a Raspberry Pi and a ridiculously oversized switch.
+Modify our hackspace's [door](https://hsmr.cc/Infrastruktur/Door) state with a Raspberry Pi and a switch built into the door.
 This script writes the `spaceapi.json` and `Site.SiteNav` files for the [Space API](http://spaceapi.net/) and [PmWiki](https://www.pmwiki.org/).
 These files are mounted via *sshfs*.
 
