@@ -1,0 +1,12 @@
+[Unit]
+Description=Updates spaceapi.json
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/spaceapi --file /mnt/wega/spaceapi.json --wiki /mnt/wega/wiki.d/Site.SiteNav
+RestartSec=5
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
