@@ -14,31 +14,34 @@ DOOR_PIN = 17
 mqttclient = mqtt.Client() 
 
 spaceapi = {
-    'api': '0.13',
+    'api': '0.13',  # NOTE: dropped in API version 14, api_compatibility only
+    'api_compatibility': ['14'],
     'space': '[hsmr] Hackspace Marburg',
     'logo': 'https://hsmr.cc/logo.svg',
     'url': 'https://hsmr.cc/',
     'location': {
         'address': '[hsmr] Hackspace Marburg, Rudolf-Bultmann-Strasse 2b, 35039 Marburg, Germany',
         'lat': 50.81615,
-        'lon': 8.77851
+        'lon': 8.77851,
+        'timezone': 'Europe/Berlin'
     },
     'contact': {
         'email': 'mail@hsmr.cc',
         'irc': 'ircs://irc.hackint.org:6697/#hsmr',
+        'mastodon': '@hsmr@chaos.social',
         'ml': 'public@lists.hsmr.cc',
         'phone': '+49 6421 4924981'
     },
-    'issue_report_channels': [
+    'issue_report_channels': [  # NOTE: dropped in API version 14
         'email',
-        'irc'
+        'ml'
     ],
-    'open': False,
     'state': {
-        'open': None,
+        'open': False,
         'lastchange': int(time.time()),
-        'message': None
-    }
+        'message': ''
+    },
+    'ext_ccc': 'chaostreff'  # one of erfa, chaostreff or family - #812455
 }
 
 
@@ -131,13 +134,12 @@ def change_state(door_open, flti_only, timestamp):
         or (not flti_only and spaceapi['state']['message'] != None)
     ):
         with open(json_location, 'w') as f:
-            spaceapi['open'] = door_open
             spaceapi['state']['open'] = door_open
             spaceapi['state']['lastchange'] = int(timestamp)
             spaceapi['state']['message'] = (
                 'Access is currently restricted to WLTI*. Please refer to https://hsmr.cc/flti for more details.'
                 if flti_only and door_open
-                else None
+                else ''
             )
             json.dump(spaceapi, f)
             f.close()
